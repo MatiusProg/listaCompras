@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1b3a2b">
+<title>Listas de Compras</title>
+
+<!-- ============ PWA: manifest embebido como data-URI ============ -->
+<link rel="manifest" href='data:application/manifest+json,{"name":"Listas de Compras","short_name":"Listas","start_url":".","display":"standalone","background_color":"%23f4efe3","theme_color":"%231b3a2b","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%231b3a2b%27/%3E%3Ctext x=%2796%27 y=%27130%27 font-size=%27110%27 text-anchor=%27middle%27%3E%F0%9F%9B%92%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"}]}'>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%231b3a2b%27/%3E%3Ctext x=%2796%27 y=%27130%27 font-size=%27110%27 text-anchor=%27middle%27%3E%F0%9F%9B%92%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+
+<style>
+  /* ===================== Tema / Variables ===================== */
+  :root{
+    --bg:#f4efe3;
+    --paper:#fbf8f0;
+    --ink:#22281f;
+    --ink-soft:#5d6655;
+    --line:#d9d2bf;
+    --green:#1b3a2b;
+    --green-2:#2f5d43;
+    --accent:#c75b39;
+    --amber:#d99a2b;
+    --ok:#3d7a4f;
+    --quote:#2b6fa0;        /* azul cotización */
+    --shadow:0 2px 0 rgba(34,40,31,.08), 0 10px 24px -16px rgba(34,40,31,.45);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 100% -10%, #fffdf6, transparent),
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(34,40,31,.035) 32px),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:120px;
+    transition:background .3s;
+  }
+  body.quote-mode{
+    background:
+      radial-gradient(1200px 600px at 100% -10%, #f0f6fb, transparent),
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(43,111,160,.05) 32px),
+      #eef4f8;
+  }
+
+  header{
+    position:sticky;top:0;z-index:30;
+    background:var(--green);color:#f6f2e6;
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;
+    box-shadow:0 6px 20px -12px rgba(0,0,0,.6);
+    transition:background .3s;
+  }
+  body.quote-mode header{background:var(--quote);}
+  header .wrap{max-width:680px;margin:0 auto;display:flex;align-items:center;gap:10px;}
+  header h1{font-size:1.2rem;margin:0;letter-spacing:.3px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  header .sub{font-size:.72rem;opacity:.75;font-family:ui-sans-serif,system-ui,sans-serif;margin-top:2px;}
+
+  main{max-width:680px;margin:0 auto;padding:14px 14px 0;}
+
+  .clients{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none;}
+  .clients::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto;border:1.5px solid var(--line);background:var(--paper);
+    color:var(--ink-soft);border-radius:999px;padding:8px 14px;font-size:.9rem;
+    font-family:ui-sans-serif,system-ui,sans-serif;cursor:pointer;transition:.18s;
+    white-space:nowrap;box-shadow:var(--shadow);
+  }
+  .chip.active{background:var(--green);color:#f6f2e6;border-color:var(--green);transform:translateY(-1px);}
+  body.quote-mode .chip.active{background:var(--quote);border-color:var(--quote);}
+  .chip.add{border-style:dashed;color:var(--green-2);font-weight:600;}
+
+  /* Interruptor de modo */
+  .mode-bar{
+    display:flex;background:var(--paper);border:1px solid var(--line);border-radius:999px;
+    padding:4px;margin:0 2px 12px;box-shadow:var(--shadow);font-family:ui-sans-serif,system-ui,sans-serif;
+  }
+  .mode-bar button{
+    flex:1;border:none;background:none;padding:9px;border-radius:999px;font-size:.86rem;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;transition:.18s;display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .mode-bar button.on{background:var(--green);color:#fff;}
+  .mode-bar button.on.quote{background:var(--quote);}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;}
+  .card .card-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px dashed var(--line);}
+  .card .card-head .title{font-size:1.05rem;font-weight:600;}
+  .card .card-head .date{font-size:.72rem;color:var(--ink-soft);font-family:ui-sans-serif,system-ui,sans-serif;}
+
+  .quote-note{
+    background:#e3eef6;border-bottom:1px dashed #b9d2e5;padding:9px 14px;font-size:.78rem;color:#2b6fa0;
+    font-family:ui-sans-serif,system-ui,sans-serif;
+  }
+
+  .section-label{display:flex;align-items:center;gap:8px;padding:10px 14px 4px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--ink-soft);}
+  .section-label .dot{width:9px;height:9px;border-radius:50%;}
+  .dot.pend{background:var(--amber);}
+  .dot.done{background:var(--ok);}
+
+  ul.items{list-style:none;margin:0;padding:0 6px;}
+  li.item{display:flex;align-items:center;gap:10px;padding:10px 8px;margin:0 6px;border-bottom:1px solid rgba(217,210,191,.6);}
+  li.item:last-child{border-bottom:none;}
+  .check{flex:0 0 auto;width:24px;height:24px;border-radius:7px;border:2px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transition:.15s;}
+  .check.on{background:var(--ok);border-color:var(--ok);}
+  .item .body{flex:1 1 auto;min-width:0;cursor:pointer;}
+  .item .name{font-size:1rem;line-height:1.2;}
+  .item .name.done{text-decoration:line-through;color:var(--ink-soft);}
+  .item .detail{font-size:.78rem;color:var(--ink-soft);font-style:italic;}
+  .item .price{flex:0 0 auto;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.92rem;font-weight:600;color:var(--green-2);min-width:54px;text-align:right;}
+  .item .price.empty{color:#bcae8e;font-weight:400;}
+  .item .del{flex:0 0 auto;border:none;background:none;color:#c0392b;font-size:1.1rem;opacity:.45;cursor:pointer;padding:4px;}
+
+  /* input de precio en modo cotización */
+  .qprice{flex:0 0 auto;width:78px;}
+  .qprice input{width:100%;text-align:right;font-family:ui-monospace,monospace;font-size:.9rem;padding:8px 8px;border:1.5px solid var(--line);border-radius:8px;background:#fff;}
+  .qprice input:focus{outline:none;border-color:var(--quote);}
+  .qdetail{margin-top:4px;width:100%;font-family:ui-sans-serif,system-ui,sans-serif;font-size:.78rem;font-style:italic;color:var(--ink-soft);padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;}
+  .qdetail:focus{outline:none;border-color:var(--quote);font-style:normal;}
+  li.item.has-quote{background:rgba(43,111,160,.06);}
+
+  .empty-msg{padding:14px;color:var(--ink-soft);font-style:italic;font-size:.9rem;text-align:center;}
+
+  .totals{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(0deg,#f1ead8,transparent);border-top:1px dashed var(--line);font-family:ui-sans-serif,system-ui,sans-serif;}
+  body.quote-mode .totals{background:linear-gradient(0deg,#e3eef6,transparent);}
+  .totals .lbl{font-size:.8rem;color:var(--ink-soft);letter-spacing:.05em;}
+  .totals .amt{font-size:1.3rem;font-weight:700;color:var(--green);}
+  body.quote-mode .totals .amt{color:var(--quote);}
+  .totals .amt small{font-size:.8rem;font-weight:600;}
+
+  .add-row{padding:10px 12px 14px;}
+  .add-row form{display:grid;grid-template-columns:1fr 96px 40px;gap:8px;}
+  .add-row input{font-family:ui-sans-serif,system-ui,sans-serif;font-size:.95rem;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;width:100%;}
+  .add-row input:focus{outline:none;border-color:var(--green-2);}
+  .add-row .price-in{text-align:right;}
+  .add-row .btn-add{border:none;border-radius:10px;background:var(--green);color:#fff;font-size:1.3rem;cursor:pointer;}
+  body.quote-mode .add-row .btn-add{background:var(--quote);}
+  .add-row .detail-in{grid-column:1 / -1;}
+
+  .actions{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(251,248,240,.92);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);}
+  .actions .wrap{max-width:680px;margin:0 auto;display:flex;gap:8px;}
+  .btn{flex:1;border:none;border-radius:12px;padding:13px 8px;font-size:.92rem;cursor:pointer;font-family:ui-sans-serif,system-ui,sans-serif;font-weight:600;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;}
+  .btn:active{transform:scale(.97);}
+  .btn-wa{background:#1b7d4f;color:#fff;flex:2;}
+  .btn-quote{background:var(--quote);color:#fff;flex:2;}
+  .btn-light{background:var(--paper);color:var(--ink);border:1.5px solid var(--line);}
+
+  .menu-btn{margin-left:auto;background:rgba(255,255,255,.12);border:none;color:#f6f2e6;font-size:1.3rem;border-radius:10px;padding:6px 11px;cursor:pointer;}
+  .sheet-bg{position:fixed;inset:0;background:rgba(20,24,18,.5);z-index:50;display:none;}
+  .sheet-bg.show{display:block;}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--paper);border-radius:20px 20px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(110%);transition:.28s cubic-bezier(.2,.8,.2,1);max-width:680px;margin:0 auto;max-height:85vh;overflow-y:auto;}
+  .sheet.show{transform:translateY(0);}
+  .sheet h3{margin:4px 0 14px;font-size:1.05rem;}
+  .sheet .opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:9px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:.95rem;cursor:pointer;color:var(--ink);}
+  .sheet .opt .ico{font-size:1.25rem;}
+  .sheet .opt small{display:block;color:var(--ink-soft);font-size:.78rem;margin-top:2px;}
+  .sheet .opt.danger{color:#b23b2e;}
+  .sheet .close{width:100%;background:none;border:none;color:var(--ink-soft);padding:10px;margin-top:4px;font-family:ui-sans-serif,system-ui,sans-serif;cursor:pointer;}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(20,24,18,.6);z-index:70;display:none;align-items:center;justify-content:center;padding:18px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--paper);border-radius:16px;padding:18px;width:100%;max-width:480px;box-shadow:0 20px 60px -20px #000;}
+  .modal h3{margin:0 0 6px;}
+  .modal p{margin:0 0 10px;font-size:.85rem;color:var(--ink-soft);font-family:ui-sans-serif,system-ui,sans-serif;}
+  .modal textarea{width:100%;min-height:160px;border:1.5px solid var(--line);border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:.9rem;resize:vertical;}
+  .modal .row{display:flex;gap:8px;margin-top:12px;}
+
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:.88rem;font-family:ui-sans-serif,system-ui,sans-serif;opacity:0;pointer-events:none;transition:.25s;z-index:90;box-shadow:0 10px 30px -8px rgba(0,0,0,.5);max-width:90%;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  #fileInput{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1><span class="emoji">🛒</span> Listas de Compras</h1>
+      <div class="sub" id="subtitle">Karen &amp; yo · guardado en este dispositivo</div>
+    </div>
+    <button class="menu-btn" onclick="openSheet()" aria-label="Menú">⋯</button>
+  </div>
+</header>
+
+<main>
+  <div class="clients" id="clients"></div>
+  <div class="mode-bar" id="modeBar"></div>
+  <div class="card" id="card"></div>
+</main>
+
+<div class="actions">
+  <div class="wrap" id="actionBar"></div>
+</div>
+
+<!-- Hoja menú -->
+<div class="sheet-bg" id="sheetBg" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet"></div>
+<input type="file" id="fileInput" accept="application/json" onchange="importData(event)">
+
+<!-- Modal pegar -->
+<div class="modal-bg" id="pasteBg">
+  <div class="modal">
+    <h3>📋 Pegar lista rápida</h3>
+    <p>Pega una lista (un producto por línea). Quito viñetas, títulos (*COMPRADO*, *PENDIENTE*), fechas y totales automáticamente. Si una línea termina en número, lo tomo como precio.</p>
+    <textarea id="pasteArea" placeholder="Mayonesa&#10;Mostaza&#10;Royal 35&#10;Chupete (3 bolsas) 42"></textarea>
+    <div class="row">
+      <button class="btn btn-light" onclick="closePasteModal()">Cancelar</button>
+      <button class="btn btn-wa" onclick="importPasted()">Agregar a la lista</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   ESTADO Y PERSISTENCIA  (v2)
+   state = {
+     activeId,
+     mode: "compra" | "cotizacion",          // modo de vista actual
+     clients: [
+       { id, name, base, date, items:[
+           { id, name, detail, price, done, quotePrice }
+       ]}
+     ]
+   }
+   - price      = precio real de compra (total del ítem)
+   - quotePrice = precio de cotización (independiente del real)
+   - base       = true para los 3 clientes que no se pueden borrar
+   ========================================================================= */
+const STORE_KEY = "listasCompras_v2";
+const OLD_KEY   = "listasCompras_v1";
+
+let state = load();
+
+function load(){
+  // intentar v2
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ return normalize(JSON.parse(raw)); }
+  }catch(e){ console.warn(e); }
+  // migrar desde v1 si existe
+  try{
+    const old = localStorage.getItem(OLD_KEY);
+    if(old){
+      const d = JSON.parse(old);
+      (d.clients||[]).forEach((c,idx)=>{ c.base = idx<3; c.items.forEach(i=>i.quotePrice=""); });
+      d.mode = "compra";
+      return normalize(d);
+    }
+  }catch(e){ console.warn(e); }
+  // estado inicial
+  const now = today();
+  const c = (name)=>({id:uid(), name, base:true, date:now, items:[], quoteNum:1});
+  const clients = [ c("Casa"), c("Venta · Mamá de Karen"), c("Negocio · Hermano") ];
+  return { activeId: clients[0].id, mode:"compra", clients };
+}
+
+function normalize(s){
+  if(!s.mode) s.mode="compra";
+  s.clients.forEach((c,idx)=>{
+    if(c.base===undefined) c.base = idx<3;
+    if(c.quoteNum===undefined) c.quoteNum = 1;
+    c.items.forEach(i=>{ if(i.quotePrice===undefined) i.quotePrice=""; });
+  });
+  if(!s.activeId || !s.clients.find(c=>c.id===s.activeId)) s.activeId = s.clients[0].id;
+  return s;
+}
+
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toLocaleDateString("es-BO",{day:"2-digit",month:"2-digit",year:"numeric"}); }
+function activeClient(){ return state.clients.find(c=>c.id===state.activeId) || state.clients[0]; }
+function isQuote(){ return state.mode==="cotizacion"; }
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+function render(){
+  document.body.classList.toggle("quote-mode", isQuote());
+  document.getElementById("subtitle").textContent =
+    isQuote() ? "Modo cotización · precios por proveedor" : "Karen & yo · guardado en este dispositivo";
+  renderClients();
+  renderModeBar();
+  renderCard();
+  renderActionBar();
+  save();
+}
+
+function renderClients(){
+  const box = document.getElementById("clients");
+  box.innerHTML = "";
+  state.clients.forEach(c=>{
+    const b = document.createElement("button");
+    b.className = "chip" + (c.id===state.activeId ? " active":"");
+    b.textContent = c.name;
+    b.onclick = ()=>{ state.activeId=c.id; render(); };
+    box.appendChild(b);
+  });
+  const add = document.createElement("button");
+  add.className = "chip add";
+  add.textContent = "+ Cliente";
+  add.onclick = addClient;
+  box.appendChild(add);
+}
+
+function renderModeBar(){
+  const bar = document.getElementById("modeBar");
+  const c = activeClient();
+  bar.innerHTML = `
+    <button class="${!isQuote()?"on":""}" onclick="setMode('compra')">🛒 Compra</button>
+    <button class="${isQuote()?"on quote":""}" onclick="setMode('cotizacion')">💱 Cotización #${c.quoteNum||1}</button>
+  `;
+}
+
+function setMode(m){ state.mode=m; render(); }
+
+function renderCard(){
+  const c = activeClient();
+  const card = document.getElementById("card");
+
+  if(isQuote()){
+    // ---- MODO COTIZACIÓN: solo pendientes, con campo de precio de cotización ----
+    const pend = c.items.filter(i=>!i.done);
+    const totalQ = pend.reduce((s,i)=> s + (parseFloat(i.quotePrice)||0), 0);
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="title">${escapeHtml(c.name)}</div>
+        <div class="date">💱 Cotización #${c.quoteNum}</div>
+      </div>
+      <div class="quote-note">Pon precio y, si quieres, detalle solo a lo que el proveedor tenga. Al copiar, se envían únicamente los que tengan precio. Esto no afecta tu lista de compra.</div>
+      ${ pend.length ? `<ul class="items">${pend.map(quoteRow).join("")}</ul>`
+                     : `<div class="empty-msg">No hay productos pendientes para cotizar. Agrega abajo o ve a "Compra".</div>` }
+      <div class="totals">
+        <span class="lbl">TOTAL COTIZADO (con precio)</span>
+        <span class="amt">${fmt(totalQ)} <small>Bs</small></span>
+      </div>
+      <div class="add-row">
+        <form onsubmit="return addItem(event)">
+          <input id="newName" placeholder="Producto nuevo del proveedor" autocomplete="off" required>
+          <input id="newPrice" class="price-in" placeholder="Precio" inputmode="decimal" autocomplete="off">
+          <button class="btn-add" type="submit">＋</button>
+          <input id="newDetail" class="detail-in" placeholder="Detalle / unidad — opcional" autocomplete="off">
+        </form>
+      </div>
+    `;
+    return;
+  }
+
+  // ---- MODO COMPRA ----
+  const done = c.items.filter(i=>i.done);
+  const pend = c.items.filter(i=>!i.done);
+  const total = done.reduce((s,i)=> s + (parseFloat(i.price)||0), 0);
+  card.innerHTML = `
+    <div class="card-head">
+      <div class="title">${escapeHtml(c.name)}</div>
+      <div class="date">📅 ${c.date}</div>
+    </div>
+    <div class="section-label"><span class="dot done"></span> Comprado (${done.length})</div>
+    ${ done.length ? `<ul class="items">${done.map(itemRow).join("")}</ul>`
+                   : `<div class="empty-msg">Aún nada comprado. Toca el cuadro ☐ para marcar.</div>` }
+    <div class="section-label"><span class="dot pend"></span> Pendiente (${pend.length})</div>
+    ${ pend.length ? `<ul class="items">${pend.map(itemRow).join("")}</ul>`
+                   : `<div class="empty-msg">No hay pendientes 🎉</div>` }
+    <div class="totals">
+      <span class="lbl">TOTAL COMPRADO</span>
+      <span class="amt">${fmt(total)} <small>Bs</small></span>
+    </div>
+    <div class="add-row">
+      <form onsubmit="return addItem(event)">
+        <input id="newName" placeholder="Producto (ej. Mayonesa)" autocomplete="off" required>
+        <input id="newPrice" class="price-in" placeholder="Precio" inputmode="decimal" autocomplete="off">
+        <button class="btn-add" type="submit">＋</button>
+        <input id="newDetail" class="detail-in" placeholder="Detalle / unidad (ej. pico media, 1 caja) — opcional" autocomplete="off">
+      </form>
+    </div>
+  `;
+}
+
+function itemRow(i){
+  const priceTxt = (i.price!=="" && i.price!=null)
+      ? `<span class="price">= ${fmt(i.price)}</span>`
+      : `<span class="price empty">—</span>`;
+  return `
+    <li class="item">
+      <div class="check ${i.done?"on":""}" onclick="toggleDone('${i.id}')">${i.done?"✓":""}</div>
+      <div class="body" onclick="editItem('${i.id}')">
+        <div class="name ${i.done?"done":""}">${escapeHtml(i.name)}</div>
+        ${ i.detail ? `<div class="detail">${escapeHtml(i.detail)}</div>` : "" }
+      </div>
+      ${priceTxt}
+      <button class="del" onclick="delItem('${i.id}')" aria-label="Eliminar">×</button>
+    </li>`;
+}
+
+function quoteRow(i){
+  const has = (i.quotePrice!=="" && i.quotePrice!=null);
+  return `
+    <li class="item ${has?"has-quote":""}">
+      <div class="body">
+        <div class="name" onclick="editItem('${i.id}')">${escapeHtml(i.name)}</div>
+        <input class="qdetail" placeholder="detalle / unidad…" value="${escapeAttr(i.detail||"")}"
+               onchange="setDetail('${i.id}', this.value)">
+      </div>
+      <div class="qprice">
+        <input inputmode="decimal" placeholder="—" value="${escapeAttr(i.quotePrice||"")}"
+               onchange="setQuote('${i.id}', this.value)">
+      </div>
+      <button class="del" onclick="delItem('${i.id}')" aria-label="Eliminar">×</button>
+    </li>`;
+}
+
+function renderActionBar(){
+  const bar = document.getElementById("actionBar");
+  if(isQuote()){
+    bar.innerHTML = `
+      <button class="btn btn-light" onclick="clearQuotes()">🧹 Limpiar cotización</button>
+      <button class="btn btn-quote" onclick="copyQuote()">💱 Copiar cotización</button>
+    `;
+  } else {
+    bar.innerHTML = `
+      <button class="btn btn-light" onclick="openPasteModal()">📋 Pegar lista</button>
+      <button class="btn btn-wa" onclick="copyWhatsApp()">💬 Copiar para WhatsApp</button>
+    `;
+  }
+}
+
+/* =========================================================================
+   ÍTEMS
+   ========================================================================= */
+function addItem(e){
+  e.preventDefault();
+  const name = document.getElementById("newName").value.trim();
+  const price = document.getElementById("newPrice").value.trim();
+  const detail = document.getElementById("newDetail").value.trim();
+  if(!name) return false;
+  if(isQuote()){
+    // en cotización: el producto nuevo entra como PENDIENTE en la lista,
+    // y el precio escrito (si hay) va al quotePrice, no al precio real.
+    activeClient().items.push({ id:uid(), name, detail, price:"", done:false, quotePrice:price });
+  } else {
+    activeClient().items.push({ id:uid(), name, detail, price, done: price!=="", quotePrice:"" });
+  }
+  render();
+  document.getElementById("newName").value="";
+  document.getElementById("newPrice").value="";
+  document.getElementById("newDetail").value="";
+  document.getElementById("newName").focus();
+  return false;
+}
+function toggleDone(id){ const i=activeClient().items.find(x=>x.id===id); if(i){ i.done=!i.done; render(); } }
+function setQuote(id,val){ const i=activeClient().items.find(x=>x.id===id); if(i){ i.quotePrice=val.trim().replace(",","."); render(); } }
+function setDetail(id,val){ const i=activeClient().items.find(x=>x.id===id); if(i){ i.detail=val.trim(); render(); } }
+function delItem(id){ const c=activeClient(); c.items=c.items.filter(x=>x.id!==id); render(); }
+
+function editItem(id){
+  const i = activeClient().items.find(x=>x.id===id);
+  if(!i) return;
+  const name = prompt("Producto:", i.name);
+  if(name===null) return;
+  const detail = prompt("Detalle / unidad (opcional):", i.detail||"");
+  if(detail===null) return;
+  if(isQuote()){
+    const q = prompt("Precio de cotización (vacío = sin precio):", i.quotePrice||"");
+    if(q===null) return;
+    i.quotePrice = q.trim().replace(",",".");
+  } else {
+    const price = prompt("Precio total (vacío si aún no se compra):", i.price||"");
+    if(price===null) return;
+    i.price = price.trim();
+    if(i.price!=="") i.done = true;
+  }
+  i.name = name.trim() || i.name;
+  i.detail = detail.trim();
+  render();
+}
+
+/* =========================================================================
+   CLIENTES
+   ========================================================================= */
+function addClient(){
+  const name = prompt("Nombre del nuevo cliente / destino:", "");
+  if(!name) return;
+  const nc = { id:uid(), name:name.trim(), base:false, date:today(), items:[], quoteNum:1 };
+  state.clients.push(nc);
+  state.activeId = nc.id;
+  render();
+}
+function renameClient(){
+  const c = activeClient();
+  const name = prompt("Nuevo nombre:", c.name);
+  if(name){ c.name = name.trim(); render(); }
+  closeSheet();
+}
+function deleteClient(){
+  const c = activeClient();
+  closeSheet();
+  if(c.base){ toast("Los 3 clientes base no se pueden borrar"); return; }
+  if(!confirm(`¿Eliminar "${c.name}" y toda su lista?`)) return;
+  if(!confirm(`Confirmación final: esto borra "${c.name}" para siempre. ¿Seguro?`)) return;
+  state.clients = state.clients.filter(x=>x.id!==c.id);
+  state.activeId = state.clients[0].id;
+  render();
+  toast("Cliente eliminado");
+}
+
+/* =========================================================================
+   LISTA: duplicar / limpiar precios / vaciar
+   ========================================================================= */
+function duplicateList(){
+  const c = activeClient();
+  const copy = { id:uid(), name:c.name, base:false, date:today(), quoteNum:1,
+    items: c.items.map(i=>({ id:uid(), name:i.name, detail:i.detail, price:"", done:false, quotePrice:"" })) };
+  state.clients.push(copy);
+  state.activeId = copy.id;
+  render(); closeSheet(); toast("Lista duplicada como pendiente ✅");
+}
+function clearPrices(){
+  const c = activeClient(); closeSheet();
+  if(confirm("¿Volver todos los productos a pendiente y borrar precios de compra?")){
+    c.items.forEach(i=>{ i.price=""; i.done=false; });
+    c.date = today(); render();
+  }
+}
+function emptyList(){
+  const c = activeClient(); closeSheet();
+  if(!c.items.length){ toast("La lista ya está vacía"); return; }
+  if(!confirm(`¿Vaciar TODA la lista de "${c.name}"? (${c.items.length} productos)`)) return;
+  if(!confirm("Confirmación final: se borrarán todos los productos. ¿Seguro?")) return;
+  c.items = []; c.date = today(); c.quoteNum = 1; render(); toast("Lista vaciada · cotización reiniciada a #1");
+}
+
+/* =========================================================================
+   PEGAR LISTA (mejorado: ignora títulos, fechas, totales, separadores)
+   ========================================================================= */
+function openPasteModal(){ document.getElementById("pasteBg").classList.add("show"); }
+function closePasteModal(){ document.getElementById("pasteBg").classList.remove("show"); document.getElementById("pasteArea").value=""; }
+
+function isNoiseLine(line){
+  const s = line.trim();
+  if(!s) return true;
+  // títulos *COMPRADO* / *PENDIENTE* (con o sin emojis/asteriscos)
+  if(/^[*_\s]*(comprado|pendiente)[*_\s]*[✅⏳🎉]*$/i.test(s)) return true;
+  // total / subtotal
+  if(/^[*_\s]*(sub)?total/i.test(s)) return true;
+  // línea de fecha (📅 o solo fecha dd/mm/aaaa)
+  if(/^[📅\s]*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s*$/.test(s)) return true;
+  // encabezado con carrito o título en mayúsculas entre asteriscos solamente
+  if(/^🛒/.test(s)) return true;
+  // separadores: ━ ─ = - solos
+  if(/^[\s━─=\-_•·.]+$/.test(s)) return true;
+  return false;
+}
+
+function importPasted(){
+  const txt = document.getElementById("pasteArea").value;
+  const lines = txt.split("\n");
+  let added = 0;
+  lines.forEach(raw=>{
+    if(isNoiseLine(raw)) return;
+    let s = raw.replace(/^[-•*–·]+\s*/,"").trim();
+    if(!s || isNoiseLine(s)) return;
+    // precio al final (con "=" opcional y "Bs" opcional)
+    let price = "";
+    const m = s.match(/=?\s*([0-9]+(?:[.,][0-9]+)?)\s*(bs)?\s*$/i);
+    if(m && m[1]){ price = m[1].replace(",","."); s = s.slice(0, m.index).replace(/=\s*$/,"").trim(); }
+    // detalle entre paréntesis (quitar cursivas _.._ de WhatsApp)
+    s = s.replace(/_/g,"");
+    let detail = "";
+    const p = s.match(/\(([^)]*)\)\s*$/);
+    if(p){ detail = p[1].trim(); s = s.slice(0,p.index).trim(); }
+    if(!s) return;
+    activeClient().items.push({ id:uid(), name:s, detail, price, done: price!=="", quotePrice:"" });
+    added++;
+  });
+  closePasteModal(); render();
+  toast(added ? `${added} productos agregados ✅` : "No se encontraron productos");
+}
+
+/* =========================================================================
+   COPIAR PARA WHATSAPP (compra)
+   ========================================================================= */
+function buildWhatsAppText(){
+  const c = activeClient();
+  const done = c.items.filter(i=>i.done);
+  const pend = c.items.filter(i=>!i.done);
+  const total = done.reduce((s,i)=> s + (parseFloat(i.price)||0), 0);
+  let t = `🛒 *${c.name.toUpperCase()}*\n📅 ${c.date}\n`;
+  t += `\n*COMPRADO* ✅\n`;
+  if(done.length){ done.forEach(i=>{ const d=i.detail?` _(${i.detail})_`:""; const p=(i.price!==""&&i.price!=null)?` = ${fmt(i.price)}`:""; t+=`• ${i.name}${d}${p}\n`; }); }
+  else { t += `—\n`; }
+  t += `\n*PENDIENTE* ⏳\n`;
+  if(pend.length){ pend.forEach(i=>{ const d=i.detail?` _(${i.detail})_`:""; t+=`• ${i.name}${d}\n`; }); }
+  else { t += `— (todo comprado 🎉)\n`; }
+  t += `\n━━━━━━━━━━━━━\n*TOTAL COMPRADO: ${fmt(total)} Bs*`;
+  return t;
+}
+
+/* COPIAR COTIZACIÓN: solo ítems con quotePrice */
+function buildQuoteText(){
+  const c = activeClient();
+  const items = c.items.filter(i=>!i.done && i.quotePrice!=="" && i.quotePrice!=null);
+  const total = items.reduce((s,i)=> s + (parseFloat(i.quotePrice)||0), 0);
+  let t = `💱 *COTIZACIÓN #${c.quoteNum} · ${c.name.toUpperCase()}*\n📅 ${today()}\n\n`;
+  if(items.length){ items.forEach(i=>{ const d=i.detail?` _(${i.detail})_`:""; t+=`• ${i.name}${d} = ${fmt(i.quotePrice)}\n`; }); }
+  else { t += `— (sin precios cargados)\n`; }
+  t += `\n━━━━━━━━━━━━━\n*TOTAL COTIZADO: ${fmt(total)} Bs*`;
+  return t;
+}
+
+async function copyText(text, okMsg){
+  try{ await navigator.clipboard.writeText(text); toast(okMsg); }
+  catch(e){
+    const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); toast(okMsg); } catch(_){ prompt("Copia este texto:", text); }
+    ta.remove();
+  }
+}
+function copyWhatsApp(){ copyText(buildWhatsAppText(), "Copiado ✅ Pégalo en WhatsApp"); }
+function copyQuote(){
+  const c = activeClient();
+  const has = c.items.some(i=>!i.done && i.quotePrice!=="" && i.quotePrice!=null);
+  if(!has){ toast("Aún no pusiste precios de cotización"); return; }
+  copyText(buildQuoteText(), "Cotización copiada ✅ Pégala en WhatsApp");
+}
+function clearQuotes(){
+  const c = activeClient();
+  if(!c.items.some(i=>i.quotePrice)){ toast("No hay precios de cotización"); return; }
+  if(confirm(`¿Cerrar la Cotización #${c.quoteNum} y empezar la #${c.quoteNum+1}? (no afecta tu lista de compra)`)){
+    c.items.forEach(i=>i.quotePrice="");
+    c.quoteNum = (c.quoteNum||1) + 1;
+    render(); toast(`Cotización limpiada · ahora es la #${c.quoteNum} ✅`);
+  }
+}
+
+/* =========================================================================
+   EXPORTAR / IMPORTAR
+   ========================================================================= */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `respaldo-listas-${today().replace(/\//g,"-")}.json`; a.click();
+  URL.revokeObjectURL(url); closeSheet(); toast("Respaldo descargado 💾");
+}
+function importData(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(data && Array.isArray(data.clients)){
+        if(confirm("Esto reemplazará tus datos actuales. ¿Continuar?")){
+          state = normalize(data); render(); toast("Respaldo importado ✅");
+        }
+      } else { toast("Archivo no válido"); }
+    }catch(err){ toast("No se pudo leer el archivo"); }
+  };
+  reader.readAsText(file); ev.target.value=""; closeSheet();
+}
+
+/* =========================================================================
+   MENÚ (hoja inferior) — se arma dinámico
+   ========================================================================= */
+function openSheet(){
+  const c = activeClient();
+  const sheet = document.getElementById("sheet");
+  sheet.innerHTML = `
+    <h3>Opciones — ${escapeHtml(c.name)}</h3>
+    <button class="opt" onclick="duplicateList()"><span class="ico">📑</span><span>Duplicar esta lista en una nueva fecha<small>Copia los productos como pendientes</small></span></button>
+    <button class="opt" onclick="renameClient()"><span class="ico">✏️</span><span>Renombrar cliente actual</span></button>
+    <button class="opt" onclick="clearPrices()"><span class="ico">🧹</span><span>Limpiar precios y volver todo a pendiente<small>Reusar la misma lista para la próxima compra</small></span></button>
+    <button class="opt danger" onclick="emptyList()"><span class="ico">🗑️</span><span>Vaciar lista completa<small>Borra todos los productos (doble confirmación)</small></span></button>
+    <button class="opt" onclick="exportData()"><span class="ico">💾</span><span>Exportar respaldo (archivo)<small>Guarda todo por si cambias de teléfono</small></span></button>
+    <button class="opt" onclick="document.getElementById('fileInput').click()"><span class="ico">📂</span><span>Importar respaldo</span></button>
+    ${ c.base
+        ? `<button class="opt" onclick="toast('Los 3 clientes base no se pueden borrar');closeSheet()"><span class="ico">🔒</span><span>Cliente base (no se puede eliminar)</span></button>`
+        : `<button class="opt danger" onclick="deleteClient()"><span class="ico">❌</span><span>Eliminar cliente actual<small>Doble confirmación</small></span></button>` }
+    <button class="close" onclick="closeSheet()">Cerrar</button>
+  `;
+  document.getElementById("sheetBg").classList.add("show");
+  sheet.classList.add("show");
+}
+function closeSheet(){ document.getElementById("sheetBg").classList.remove("show"); document.getElementById("sheet").classList.remove("show"); }
+
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+let toastTimer;
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2400); }
+function fmt(n){ const v=parseFloat(n); if(isNaN(v)) return "0"; return Number.isInteger(v)?String(v):v.toFixed(2); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function escapeAttr(s){ return String(s).replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+render();
+
+if("serviceWorker" in navigator){
+  const sw = `self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("activate",e=>self.clients.claim());self.addEventListener("fetch",()=>{});`;
+  const blob = new Blob([sw],{type:"text/javascript"});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+</body>
+</html>
